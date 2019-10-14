@@ -88,12 +88,12 @@ data InfluxdbOptions = InfluxdbOptions
 -- * Empty 'database', 'prefix' and 'suffix'.
 defaultInfluxdbOptions :: InfluxdbOptions
 defaultInfluxdbOptions = InfluxdbOptions
-    { host          = "127.0.0.1"
-    , port          = 8086
-    , database      = ""
-    , flushInterval = 1000
-    , prefix        = ""
-    , suffix        = ""
+    { host           = "127.0.0.1"
+    , port           = 8086
+    , database       = ""
+    , flushInterval  = 1000
+    , prefix         = ""
+    , suffix         = ""
     , authentication = Nothing
     }
 
