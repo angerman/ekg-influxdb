@@ -11,12 +11,21 @@
 -- in the @ekg-core@ package, by calling e.g. the 'EKG.registerGcMetrics'
 -- function defined in that pacakge.
 --
+-- If you're using authentication in your database you can provide the
+-- credentials:
+--
+-- > let credentials = InfluxdbAuthentication "user" "password"
+-- >     options = defaultInfluxdbOptions { authentication = Just credentials }
+-- >  in forkInfluxdb options store
+--
 -- NOTE: This package has been modelled after the @ekg-carbon@ package, and
 --       is almost identical. The author is indebted to those fine folks who
 --       wrote the @ekg-carbon@ package.
+--
 
 module System.Remote.Monitoring.Influxdb
   ( InfluxdbOptions(..)
+  , InfluxdbAuthentication(..)
   , defaultInfluxdbOptions
   , forkInfluxdb
   , forkInfluxdbRestart
@@ -38,6 +47,13 @@ import Control.Lens ((&), (.~))
 import Data.String (fromString)
 
 --------------------------------------------------------------------------------
+-- | Credentials for authentication to influxdb.
+data InfluxdbAuthentication = InfluxdbAuthentication
+  { user :: !T.Text
+  , password :: !T.Text
+  } deriving (Eq, Show)
+
+--------------------------------------------------------------------------------
 -- | Options to control how to connect to the Influxdb server and how often to
 -- flush metrics. The flush interval should match the shortest retention rate of
 -- the matching retention periods, or you risk over-riding previous samples.
@@ -57,6 +73,7 @@ data InfluxdbOptions = InfluxdbOptions
     -- @takeWhile (/= \'.\') \<$\> getHostName@, using @getHostName@
     -- from the @Network.BSD@ module in the network package.
   , suffix :: !T.Text
+  , authentication :: Maybe InfluxdbAuthentication
   } deriving (Eq, Show)
 
 --------------------------------------------------------------------------------
@@ -77,6 +94,7 @@ defaultInfluxdbOptions = InfluxdbOptions
     , flushInterval = 1000
     , prefix        = ""
     , suffix        = ""
+    , authentication = Nothing
     }
 
 --------------------------------------------------------------------------------
@@ -110,9 +128,13 @@ forkInfluxdbRestart :: InfluxdbOptions
                     -> IO ThreadId
 forkInfluxdbRestart opts store exceptionHandler = forkIO go
   where
+    credentials =
+      (\auth -> Influxdb.credentials (fromString . T.unpack . user $ auth) (fromString . T.unpack . password $ auth))
+      <$> authentication opts
     params = (Influxdb.writeParams (fromString . T.unpack $ database opts))
              & Influxdb.server . Influxdb.host .~ (fromString . T.unpack $ host opts)
              & Influxdb.server . Influxdb.port .~ (port opts)
+             & Influxdb.authentication .~ credentials
     go = do
         terminated <-
           try $ bracket
